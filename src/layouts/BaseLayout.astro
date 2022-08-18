@@ -135,7 +135,7 @@ const page = pages.find(post => post.url === Astro.url.pathname)
       const handler =  async (e) => {
         e.preventDefault();
         const url = e.currentTarget.href;
-        const text = await fetch(url).then(d => d.text());
+        const text = await fetch(`${url}/`).then(d => d.text());
 
         const wrapper = document.createElement("div");
         wrapper.innerHTML = text;

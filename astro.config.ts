@@ -14,6 +14,7 @@ import transformerVariantGroup from "@unocss/transformer-variant-group";
 export default defineConfig(
   /** @type {import('astro').AstroUserConfig} */
   {
+    site: 'https://blog.sawa.cat',
     integrations: [
       astroImageTools,
       solid(),

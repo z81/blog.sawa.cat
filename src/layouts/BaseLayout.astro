@@ -1,0 +1,158 @@
+---
+import 'uno.css';
+import { ArticleView } from '../components/ArticleView';
+import { OpennedFile } from '../components/OpennedFile';
+import { ArticlesGroup } from '../components/ArticlesGroup';
+import Header from '../components/Header.astro';
+
+
+
+const pages = await Astro.glob<{title: string; url: string}>('../pages/**/*.astro');
+const allPosts = pages.filter(post => post.url.includes('articles'));
+
+const tree = allPosts.flatMap(post => {
+  const segments = post.url.split('/');
+  segments.pop();
+
+  return {
+    title: segments.at(-1),
+    children: allPosts.filter(subPost => {
+      return subPost.url.startsWith(segments.join('/'))
+                && segments.length === subPost.url.split('/').length - 1
+    })
+  }
+}).sort((a, b) => a.title === 'articles' ? -1 : 0);
+
+
+const page = pages.find(post => post.url === Astro.url.pathname)
+
+---
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>astro | {page?.title ?? ''}</title>
+    <style is:global lang="scss">
+      h1 {
+        @apply: text-8 mt-2 mb-2;
+      }
+
+      h1::before, h1::after {
+        content: '{';
+        @apply: c-gray-300 pr-1 fw-bold font-mono inline-block;
+      }
+      h1::after {
+        content: '}';
+        @apply: pl-1;
+      }
+
+      blockquote {
+        @apply: bg-cool-gray-100 m-0 p-4;
+      }
+
+
+      // $classes: '';
+      // @for $i from 1 through 9999 {
+      //     $classes: join($classes, unquote(" #{$i} #{\a} "), space);
+      // }
+
+      :root {
+        --lines-width: 40px;
+        // --lines: "#{$classes}";
+      }
+
+      .article-view-container {
+        overflow: auto;
+        overflow-x: hidden;
+      }
+
+      .article-view-code {
+        margin-left: var(--lines-width);
+        position: relative;
+      }
+
+      .article-view-code::before {
+        content: var(--lines);
+        white-space: pre;
+        transform: translateX(calc(var(--lines-width) * -1));
+        @apply: overflow-hidden h-full absolute;
+      }
+    </style>
+  </head>
+  <body class="m-0 bg-cool-gray-300 h-screen flex box-border p-6 font-sans">
+    <div class="window h-full bg-white rounded-3 shadow-sm flex flex-col flex-1 overflow-hidden">
+      <Header />
+      <main class="content h-full flex flex-1">
+        <aside class="w-65 bg-cool-gray-100 c-cool-gray-600 text-4 fw-bold">
+          <div class="openned-head font-mono gap-2 flex items-center b-b-1 p-3 b-cool-gray-200">
+            <div class="i-ri:align-justify bg-slate-400"></div>Статьи
+          </div>
+          <nav>
+            {tree.map(folder => <ArticlesGroup
+              title={folder.title!}
+              files={folder.children}
+              path={Astro.url.pathname}
+            />
+          )}
+          </nav>
+        </aside>
+        <section class="b-l b-cool-gray-200 w-full flex flex-col">
+          <nav class="openned-head flex b-b-1 p-1 c-cool-gray-600 text-4 fw-semibold b-cool-gray-200 bg-cool-gray-100">
+            {Astro.url.pathname.includes('articles') && <OpennedFile path={Astro.url.pathname} active />}
+            <OpennedFile path="/index.md" active={Astro.url.pathname === "/index.md" || Astro.url.pathname === "/"}/>
+            <OpennedFile path="/about.tsx" active={Astro.url.pathname === "/about.tsx"}/>
+          </nav>
+          <ArticleView>
+            <div>
+              <slot />
+              {(Astro.url.pathname === "/index.md" || Astro.url.pathname === "/") && (
+                <div>
+                  {tree.map(folder => (
+                    <div>
+                      {folder.title !== "articles" && <div class="c-gray-900 fw-bold text-8">/{folder.title}</div>}
+                      <div class={folder.title !== "articles" ? "pl-2" : "pl-0" }>
+                        {folder.children.map(art => (
+                          <a class="text-6 c-blue-500" href={art.url}>#{art.title}</a>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ArticleView>
+        </section>
+      </main>
+    </div>
+    <script is:inline>
+      document.body.style.setProperty(
+        "--lines",
+        `"${Array.from({ length: 9999 }, (_, i) => i + 1)
+          .join(" \\a ")}"`
+      );
+
+
+      const handler =  async (e) => {
+        e.preventDefault();
+        const url = e.currentTarget.href;
+        const text = await fetch(url).then(d => d.text());
+
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = text;
+
+        document.querySelector('main').outerHTML = wrapper.querySelector('main').outerHTML;
+
+        history.pushState({}, document.title, url)
+        sub();
+      }
+
+      const sub = () => {
+        [...document.querySelectorAll('a')].forEach(link => {
+          link.addEventListener('click', handler);
+        })
+      }
+
+      sub();
+    </script>
+  </body>
+</html>
